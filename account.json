@@ -1,0 +1,15 @@
+{
+    "Address": "B660F446FFC5BED8110246510CA32B55E3D3D6A1",
+    "PublicKey": {
+        "CurveType": "ed25519",
+        "PublicKey": "1375B109207AE7B906F2ACF57947DC6092B373B3782DFBC5E96A0765D5D69B74"
+    },
+    "Amount": 99999999999999,
+    "Name": "Validator_4",
+    "Permissions": {
+        "Base": {
+            "Perms": "root | send | call | createContract | createAccount | bond | name | proposal | input | batch | identify | hasBase | setBase | unsetBase | setGlobal | hasRole | addRole | removeRole",
+            "SetBit": "root | send | call | createContract | createAccount | bond | name | proposal | input | batch | identify | hasBase | setBase | unsetBase | setGlobal | hasRole | addRole | removeRole"
+        }
+    }
+}

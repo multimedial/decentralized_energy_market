@@ -1,0 +1,27 @@
+
+- name: checkenergymarket
+  call:
+    destination: $consumer
+    function: energyMarket
+
+- name: levelnode
+  deploy:
+    contract: LevellingNode.sol
+
+- name: connectenergymarket
+  call:
+    destination: $consumer
+    function: registerEnergyMarket
+    data:
+      - $levelnode
+
+- name: checkenergymarket
+  call:
+    destination: $consumer
+    function: energyMarket
+
+- name: assertEnergyMarket
+  assert:
+    key: $checkenergymarket
+    relation: eq
+    val: $levelnode

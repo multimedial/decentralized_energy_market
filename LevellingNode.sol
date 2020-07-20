@@ -9,10 +9,7 @@
 // Version: 1.0
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-pragma solidity >=0.4.26 <0.7.0;
-pragma experimental ABIEncoderV2;
-
-//import "./strings.sol";
+pragma solidity ^0.5.0;
 
 contract LevellingNode {
     
@@ -29,20 +26,28 @@ contract LevellingNode {
     mapping (address => bool) public participants;
     
     // pricelist
-    mapping (string => int) public prices;
-    string[] priceKeys;
-    
-    struct PriceList {
-        string name;
-        int price;
-    }
+    // mapping for normal power price
+    mapping (string => int) prices;
+
+    //////////////////////////////////////////////////////////
+    // EEG-power prices
+    // first entry is timestamp,
+    // second is list of prices per energy type
+    //////////////////////////////////////////////////////////
+    mapping(string => int) buyingPrices;
     
     
     // events
-    event logMsg(string, int);
-    event energyTransaction(address, string, uint, string, int);
-    event TransactionSuccess(string);
-    event TransactionFailed(string);
+    event logMsg(string msg, int value);
+    event logMsg2(string msg, uint value);
+    event energyTransaction(address sender, uint amount, int price, int totalAmount);
+    event TransactionSuccess(string a);
+    event TransactionFailed(string a);
+    event getAPrice(string timestamp, int current_energy_price_kwh);
+    event hint(address s);
+    event setAPrice(string timestamp, int current_energy_price_kwh);
+    event setABuyingPrice(string timestamp, int current_energy_price_kwh);
+    event getABuyingPrice(string timestamp, int current_energy_price_kwh);
 
     modifier onlyOwner {
         require(
@@ -57,7 +62,9 @@ contract LevellingNode {
         
         // store the owner
         owner = msg.sender;
-        
+        prices['normal_sell'] = 11;
+        prices['normal_buy'] = 10;
+
     }
     
     
@@ -66,7 +73,7 @@ contract LevellingNode {
     }
     
     
-    function getAccountBalance() public view returns (uint){
+    function getAccountBalance() public view returns (uint balance){
         return address(this).balance;
     }
     
@@ -74,93 +81,107 @@ contract LevellingNode {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // management functions
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function setPrice(string memory _pricetype, int _price) public onlyOwner {
-        
-        if (prices[_pricetype] == 0) {
-            priceKeys.push(_pricetype);
-        } 
-        prices[_pricetype] = _price;
+    function setPriceForSingleWatt(string memory _timestamp, int _price) public onlyOwner  returns (int price){
+        // sets the current energyprice for the given timestamp
+        prices[_timestamp] = _price;
+        emit setAPrice(_timestamp, _price);
+        return getPriceForSingleWatt(_timestamp);
+    }
 
+    function getPriceForSingleWatt(string memory _timestamp) public returns (int price) {
+        // emit the prices
+        int price = prices[_timestamp];
+        emit getAPrice(_timestamp, price);
+        return price;
     }
-    
-    
-    function getPrice(string memory _pricetype) public view returns (uint256, uint256) {
-        
-        string memory keyBuy = strConcat( _pricetype, "_buy" );
-        string memory keySell = strConcat( _pricetype, "_sell" );
-        return (uint(prices[keyBuy]),  uint(prices[keySell]));
+
+    function setBuyingPrice(string memory _timestamp, int _price) public onlyOwner returns (int buyingPrice) {
+        buyingPrices[_timestamp] = _price;
+        emit setABuyingPrice(_timestamp, buyingPrices[_timestamp]);
+        return buyingPrices[_timestamp];
     }
-    
-    
-    function getListOfPrices() public view returns (PriceList[] memory) {
-        
-        PriceList[] memory listOfPrices = new PriceList[](priceKeys.length);
-        
-        for (uint i=0;i<priceKeys.length;i++) {
-            listOfPrices[i] = PriceList(priceKeys[i], prices[priceKeys[i]]);
-        }
-        
-        return listOfPrices;
-        
+
+    function getBuyingPrice(string memory _timestamp) public returns (int buyingPrice) {
+        int buyingPrice = buyingPrices[_timestamp];
+        emit getABuyingPrice(_timestamp, buyingPrice);
+        return buyingPrice;
     }
-    
-    
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // buy/sell functions
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function buyEnergy(string memory energyType, uint amountEnergy) public  returns (uint){
-        
-        address sender = msg.sender;
-        string memory key = strConcat( energyType, "_buy" );
-        int price = prices[key];
-        
-        require( price != 0 , strConcat("Unknown energy type: '", energyType,"' -- no price available.") );
-        
-        // compute total price
-        uint totalAmount = amountEnergy * uint(price);
-        
-        uint dummy = 0;
-        
-        if (totalAmount>dummy) {
-            // we are good! Transaction can happen!
+    function buyEnergy(string memory _timestamp, uint _amountWatt) public payable
+    returns (uint amountBought, int eeg_verguetung, int totalAmount) {
 
-            // how to get the amount of energy being sold?
-            //sender.call.gas(1000000).value(1 ether)("register");
-            
-            // transfer money into account of sellEnergy
-            emit TransactionSuccess("Transaction suceeded");
-            emit energyTransaction(sender, " bought ", amountEnergy, " at ", price);
-            
-            totalBuy += amountEnergy;
-            
-            return amountEnergy;
+        emit logMsg("BLOCKCHAIN: energy market request for buying ", int(_amountWatt));
+
+        if (_amountWatt ==0) {
+            emit TransactionFailed("Transaction failed, no amount specified.");
+            return (0,0,0);
         }
-        
-    }
-    
-    
-    function sellEnergy(string memory energyType, uint amount) public payable returns (uint){
-        
-        string memory priceKey = strConcat( energyType, "_sell" );
-        int price = prices[ priceKey ];
-        
-        require( price != 0, 
-                strConcat("Selling transaction failed, no price available for energytype ", energyType) );
-        
-         // compute total price
-        uint totalAmount = amount * uint(price);
-        
-        require( msg.value>=totalAmount, 
-                "Not enough funds sent." );
-        
-        // transfer money into account of sellEnergy
+
+        int price =buyingPrices[_timestamp];
+        emit logMsg("EEG price: ", price);
+        // compute total price
+        int totalAmount = int(_amountWatt) * price;
+        emit logMsg("Total amount payable: ", totalAmount);
+
+        if(address(this).balance>=uint(totalAmount)) {
+
+            msg.sender.call.value( uint(totalAmount) )("");
+
+        } else {
+            // not enough funds!
+
+            return (0,0,0);
+        }
+
+        totalBuy += _amountWatt;
         emit TransactionSuccess("Transaction suceeded");
-        emit energyTransaction(msg.sender, " sold ", amount, " at ", prices [priceKey]);
-        
-        totalSell += amount;
-        
-        return amount;
-        
+        emit energyTransaction(msg.sender, _amountWatt, price, totalAmount);
+        emit logMsg("Local balance after sending:", int(address(this).balance));
+        emit TransactionFailed("Transaction failed, not enough funds available.");
+        return (_amountWatt, price, totalAmount);
+
+    }
+
+
+    
+    function sellEnergy(string memory _timestamp, uint _amountInWatt) public payable returns (uint amountSold, int price, int totalAmount, string memory errorMsg){
+
+        emit logMsg("LEVELNODE: selling energy in Wh: ", int(_amountInWatt));
+        emit logMsg("LEVELNODE: amount of money sent in Wei: ", int(msg.value));
+
+        int price = prices[ _timestamp ];
+        emit logMsg("LEVELNODE: selling energy (Wh) at price", price);
+        int totalAmount = int(_amountInWatt) * price;
+
+        if (totalAmount>0) {
+                ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // normal case, the energy price is positive, this contract has to RECEIVE funds from sender
+                ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                if (int(msg.value)<totalAmount) {
+                    return (0,0,0, "ERROR: TRANSACTION FAILED: not enough funds were sent." );
+                }
+                totalSell += _amountInWatt;
+        }
+
+
+        if (totalAmount<0) {
+            int realTotalAmount = totalAmount*(-1);
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // unusual case, the energy price is negative - this contract needs to SEND funds to sender
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //require( msg.value==0, "LEVELNODE: TRANSACTION FAILED: funds were sent, but not needed!" );
+            // pay the sender the sum of totalAmount via standard payable function
+            require( int(address(this).balance)>realTotalAmount, "ERROR: Levelnode ran out of funds!" );
+            emit logMsg("LEVELNODE: sending money because of neg. energy price: ", realTotalAmount);
+            msg.sender.call.value(uint(realTotalAmount))("");
+        }
+
+        emit energyTransaction(msg.sender, _amountInWatt, price, totalAmount);
+        emit TransactionSuccess("LEVELNODE: Transaction suceeded, energy sold, money sent.");
+        return (_amountInWatt, price, totalAmount,'');
 
     }
     
@@ -175,7 +196,7 @@ contract LevellingNode {
     // string concatenation function
     // taken from https://github.com/provable-things/ethereum-api/blob/master/oraclizeAPI_0.5.sol
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+    /*
     function strConcat(string memory _a, string memory _b) internal pure returns (string memory _concatenatedString) {
         return strConcat(_a, _b, "", "", "");
     }
@@ -218,5 +239,5 @@ contract LevellingNode {
         }
         return string(babcde);
     }
-    
+    */
 }
