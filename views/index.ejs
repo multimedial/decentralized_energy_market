@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <title>Simulation eines dezentralen Energiemarktes für ein Wohnquartier</title>
+        <!-- Bootstrap core CSS -->
+        <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+        <!-- Custom styles for this template -->
+        <link href="style.css" rel="stylesheet">
+        <link href="assets/js/Chart.min.css" rel="stylesheet">
+    </head>
+
+    <body class="bg-light" >
+
+        <h3 class="p-3 mx-auto">Simulation eines dezentralen Energiehandels für ein Wohnquartier</h3>
+
+        <div class="container-fluid bg-light rounded">
+
+                <div class="table table-sm bg-light">
+                    <div class="row">
+
+                        <div class="col w-50">
+                            <canvas id="energyChart" class="w-100"></canvas>
+                        </div>
+
+                        <div class="col w-50">
+                            <canvas id="differenceChart" class="w-100"></canvas>
+                        </div>
+
+                    </div>
+                </div>
+
+        <div class="container-fluid bg-light rounded">
+
+                    <div class="row">
+
+                        <div class="col" class="alert alert-primary" style="width:20%" >
+                            <div class="alert alert-primary" role="alert" id="balance_quartier_alert">
+                                <img src="/assets/img/building.svg" width="16" height="16">
+                                <b><%= nameofhabitat %></b>
+                                <a href="#" id="configHabitat">
+                                    <img src="/assets/img/gear-fill.svg" width="16" height="16">
+                                </a>
+                                <span class="float-right"><img id="self-sufficient"></span>
+                                <hr>
+                                <div class="table table-sm">
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Kontostand</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="balance_quartier"></span> Wei
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Letzte Transaktion:</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="last_transaction_balance_quartier"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Euro</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="balance_quartier_EUR"></span> €
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col">
+                                            <input type="checkbox" id="use_buffer">
+                                            <label><b>Puffer (<span id="buffer_size"></span> // <span id="max_buffer_size"></span> kWh)</b></label>
+                                            <div class="progress">
+                                                <div class="progress-bar progress-bar-striped" role="progressbar"
+                                                     style="width: 100%"
+                                                     id="buffer_progressbar"
+                                                ></div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamtverbrauch</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="quartier_overall_consumption" >0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamtproduktion</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="quartier_overall_production">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamtdifferenz</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="quartier_overall_difference">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamt gekauft</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="quartier_bought">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamt verkauft</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="quartier_sold">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col" style="width:20%">
+                            <div class="alert alert-primary" role="alert" id="simulationData">
+                                <img src="/assets/img/app.svg" width="16" height="16">
+                                <b>Simulationsdaten <span id="simulatedDate" ></span></b>
+                                <hr>
+                                <div class="table container">
+
+                                    <div class="row alert-danger">
+                                        <div class="col">
+                                            <b>Verbrauch:</b>
+                                        </div>
+                                        <div class="col text-right">
+                                            <span id="energy_consumed">0</span> kWh
+                                        </div>
+                                    </div>
+
+                                    <div class="row alert-success">
+                                        <div class="col">
+                                            <b>Produziert:</b>
+                                        </div>
+                                        <div class="col text-right">
+                                            <span id="energy_produced">0</span> kWh
+                                        </div>
+                                    </div>
+
+                                    <div class="row alert-warning">
+                                        <div class="col-auto">
+                                            <b>Brutto-Differenz:</b>
+                                        </div>
+                                        <div class="col text-right">
+                                            <i><span id="difference_status">0</span> kWh</i>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col">
+                                            <b>Beitrag Puffer:</b>       &nbsp;
+                                        </div>
+                                        <div class="col text-right">
+                                            <span id="buffer_contribution">0</span> kWh
+                                        </div>
+                                    </div>
+
+                                    <div class="row bg-warning">
+                                        <div class="col-auto">
+                                            <b>Netto-Differenz:</b>
+                                        </div>
+                                        <div class="col text-right">
+                                            <b><span id="difference_net">0</span> kWh</b>
+                                        </div>
+                                        <hr>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+
+                                        <div class="col-auto">
+                                            <b>EEG-Vergütungssätze (€/kWh):</b>
+                                        </div>
+                                        <div class="col"></div>
+
+                                    </div>
+
+                                    <div class="row" id="listeegprices">
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col" style="width:20%">
+
+                            <div class="alert alert-primary" role="alert" id="simulationData">
+
+                                <img src="/assets/img/app-indicator.svg" width="16" height="16">
+                                <b>Strommix per <span id="simulatedDate2"></span></b>
+                                <hr>
+                                <canvas id="energymix"></canvas><p>
+
+                                <div>
+                                    <table class="table table-sm table-bordered table-striped" id="current_energymix">
+                                    </table>
+                                </div>
+
+                            </div>
+                            <button class="btn btn-danger container-fluid" id="protocolWindow">
+                                Simulationsprotokoll
+                            </button>
+                            <!--<textarea class="pre-scrollable w-100" id="protocol" rows="5"></textarea>-->
+                        </div>
+
+                        <div class="col" style="width:20%">
+
+                            <div class="alert alert-primary" role="alert" id="simulationData">
+
+                                <img src="/assets/img/arrow-right-square.svg" width="16" height="16">
+                                <b>Simulationskontrolle</b>
+                                <hr>
+                                <div class="table table-sm">
+
+                                    <div class="row px-3 flex-nowrap">
+                                        <div class="col flex-nowrap">
+                                            Start
+                                            <select name="startDate" id="startDate" class="">
+                                            </select>
+                                        </div>
+                                        <div class="col  flex-nowrap">
+                                            Ende
+                                            <select name="endDate" id="endDate">
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row px-3">
+                                        <div class="col">
+                                            Lastprofil:
+                                        </div>
+                                        <div class="col text-right">
+                                            <select name="Lastprofil" id="Lastprofil">
+                                                <option value="Lastprofil_H0">H0-Lastprofil</option>
+                                                <option value="Lastprofil_stromhaltig">Lastprofil alternativ</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row px-3">
+                                        <div class="col">
+                                            <button class="btn btn-danger container-fluid" id="timeStepper">
+                                                Nächster Simulationsschritt
+                                            </button>
+                                            <p/>
+                                        </div>
+                                    </div>
+                                    <div class="row px-3">
+                                        <div class="col">
+                                            <button class="btn btn-primary container-fluid" id="levelEnergy">
+                                                Energie-Differenz ausgleichen
+                                            </button>
+                                            <p/>
+                                        </div>
+                                    </div>
+                                    <div class="row px-3">
+                                        <div class="col">
+                                            <div class="btn-group-toggle" data-toggle="buttons">
+                                                <label class="btn btn-secondary container-fluid">
+                                                    <input type="checkbox" id="looping" autocomplete="off">Automatik an/aus
+                                                </label>
+                                                <small>(Zum Stoppen: ESC-Taste drücken.)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="col" style="width:20%">
+
+                            <div class="alert alert-primary" role="alert" id="balance_remote_alert">
+
+                                <img src="/assets/img/lightning.svg" width="16" height="16">
+                                <b>Netzknoten</b>
+                                <hr>
+
+                                <div class="table table-sm table-striped">
+                                    <div class="row">
+                                        <div class="col-auto">
+                                        <b>Kontostand</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="balance_remote"></span> Wei
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Letzte Transaktion:</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="last_transaction_balance_remote"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Euro</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="balance_remote_EUR"></span> €
+                                        </div>
+                                    </div>
+
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamt gekauft</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="remote_bought">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Gesamt verkauft</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="remote_sold">0</span> Wh
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Strompreis (€/kWh)</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="powerprice">0</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Strompreis (Wei/kWh)</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="ethprice">0</span>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Ankauf EEG (€/kWh)</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="eeg_price">0</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Ankauf EEG (Wei/kWh)</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="eeg_price_gwei">0</span>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>EPEX-Spot Preis (€/MWh)</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="epexprice">0</span>
+                                        </div>
+                                    </div>
+
+                                    <!--
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>Umrechnungskurs</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="exchangerate">0</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <b>vom</b>:
+                                        </div>
+                                        <div class="col text-md-right">
+                                            <span id="exchangerate_timestamp">0</span>
+                                        </div>
+                                    </div>
+                                    -->
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+        </div>
+
+        <div class="modal hide" id="pleaseWaitDialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-body h-100">
+                <div class="row h-100 justify-content-center align-items-center" role="status">
+                    <div class="rounded bg-light p-5 text-center">
+                        <div class="spinner-border"></div>
+                        <br>
+                        <span id="simulationStatus" class="text-center flex-lg-column"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" tabindex="-1" role="dialog" id="configHabitatDlg">
+            <div class="modal-dialog">
+                <div class="modal-content">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">Konfiguration des Verbrauchers</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        <form>
+
+                            <div class="form-row">
+                                <div class="col">
+                                    <label for="nameofhabitat">Name (optional)</label>
+                                    <input type="text" class="form-control is-valid" name="nameofhabitat" id="nameofhabitat"
+                                           value='<%= nameofhabitat %>' placeholder="Quartier">
+                                    <small class="form-text text-muted">Ein frei wählbarer Name.</small>
+                                </div>
+                                <div class="col">
+                                    <div class="col">
+                                        <label for="use_buffer">Pufferspeicher(kWh)</label>
+                                        <input type="number" class="form-control is-valid" id="max_buffer_size" placeholder="0">
+                                        <small class="form-text text-muted">In kWh, 0=kein Speicher</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                                <hr>
+
+                                <div class="form-row">
+                                    <div class="col">
+                                        <label for="surface_sqm">Gesamtfläche in qm</label>
+                                        <input type="number" class="form-control is-valid" id="surface_sqm"
+                                               value=<%= surface_sqm %>>
+                                        <small class="form-text text-muted">Gesamtfläche in qm als Ganzzahl</small>
+                                    </div>
+                                    <div class="col">
+                                        <label for="consumption_per_sqm">Verbrauch pro qm/Jahr (kWh)</label>
+                                        <input type="number" class="form-control is-valid" id="consumption_per_sqm"
+                                               value=<%= consumption_per_sqm %>>
+                                        <small class="form-text text-muted">Grundlast der Infastruktur (z.B. Licht)
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <div class="form-row">
+                                    <div class="col">
+                                        <label for="nbr_persons">Anzahl der Bewohner</label>
+                                        <input type="number" class="form-control is-valid" id="nbr_persons"
+                                               value=<%= nbr_persons %>>
+                                        <small class="form-text text-muted">Anzahl Bewohner</small>
+                                    </div>
+                                    <div class="col">
+                                        <label for="consumption_per_person">Jährlicher Pro-Kopf-Verbrauch</label>
+                                        <input type="number" class="form-control is-valid" id="consumption_per_person"
+                                               value=<%= consumption_per_person %>>
+                                        <small class="form-text text-muted">Pro-Kopf Verbrauch in kWh</small>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                            <h5>Energiequellen</h5>
+                            <div class="form-row" id="listOfSources"></div>
+                            <hr>
+                            <button type="button" class="btn btn-primary btn-sm" id="add_energy_source">Hinzufügen</button>
+
+                        </form>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="saveHabitatConfigBtn">Änderungen speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================== -->
+        <!-- Bootstrap core JavaScript
+            ================================================== -->
+        <!-- Placed at the end of the document so the pages load faster -->
+        <script src="assets/js/jquery.min.js"></script>
+        <script src="assets/js/jquery.number.min.js"></script>
+        <script src="assets/js/popper.js"></script>
+        <script src="bootstrap/js/bootstrap.min.js"></script>
+        <script src="pgia/lib/pgia.js"></script>
+        <script src="assets/js/Chart.bundle.min.js"></script>
+        <script src="assets/js/Simulator.js"></script>
+
+    </body>
+</html>
